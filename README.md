@@ -2,23 +2,40 @@
 
 # Ballot Box Analysis
 
-Description of what the project does and who & where it is used.
+This Python library contains reusable utilities for evaluating the physical placement of ballot drop boxes, given the primary addresses of registered voters. It leverages the [U.S. Census Geocoder](https://geocoding.geo.census.gov/geocoder/) and [Google Geocoding API](https://developers.google.com/maps/documentation/geocoding/overview) to encode each address as a set of latitude/longitude coordinates (as needed), the [TravelTime Isochrones API](https://docs.traveltime.com/api/reference/isochrones) to determine which voters fall within a fixed travel time of each box, and [Kepler.gl](https://kepler.gl/) to visualize findings on an interactive map. Please note some of these services are only available commercially.
 
+To date, these utilities have been used to help a growing number of counties in the Pacific Northwest better understand how the placement of their existing boxes impacts access. Some have taken this a step further, using the same methods to most optimally place additional boxes.
 
 ## Setup & Installation
 
-How does someone install and run (and deploy, if applicable) the project?
+The library can be installed using `pip` or any other equivalent:
 
+```shell
+pip install git+https://github.com/usdigitalresponse/ballot-box-analysis.git
+```
+
+Where applicable, certain methods expect the following environment variables to be set:
+
+-   `TRAVELTIME_ID`
+-   `TRAVELTIME_KEY`
+-   `GOOGLE_API_KEY`
 
 ## Developing Locally
 
-Describe how to set up a local development environment.
+First, follow [these installation instructions](https://code.visualstudio.com/docs/devcontainers/containers#_installation) to prepare for local development inside a container.
 
+Next, with the "Dev Containers" extension enabled, open the folder containing this repository inside Visual Studio Code.
+
+You should receive a prompt in the Visual Studio Code window. Click the "Reopen in Container" button to run the development environment inside a container.
+
+If you do not receive a prompt:
+
+1. press <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>P</kbd> to bring up the command palette in Visual Studio Code; and
+2. select the "Dev Containers: Open Folder in Container" command from the palette.
 
 ## Code of Conduct
 
 This repository falls under [U.S. Digital Response’s Code of Conduct](./CODE_OF_CONDUCT.md), and we will hold all participants in issues, pull requests, discussions, and other spaces related to this project to that Code of Conduct. Please see [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) for the full code.
-
 
 ## Contributing
 
@@ -26,10 +43,9 @@ This project wouldn’t exist without the hard work of many people. Thanks to th
 
 **Lead Maintainer:** [@tyler-richardett](https://github.com/tyler-richardett)
 
-
 ## License & Copyright
 
-Copyright (C) 2022 U.S. Digital Response (USDR)
+Copyright (C) 2025 U.S. Digital Response (USDR)
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this software except in compliance with the License. You may obtain a copy of the License at:
 
