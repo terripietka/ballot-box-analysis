@@ -256,3 +256,6 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/python,visualstudiocode,macos,windows
+data/raw/CD01-RegisteredVoters-2026-03-05-83648.xlsx
+data/processed/CD01-RegisteredVoters-2026-03-05-83648_dropped.csv
+data/processed/CD01-RegisteredVoters-2026-03-05-83648_validated.csv
