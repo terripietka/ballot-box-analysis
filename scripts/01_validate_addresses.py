@@ -1,8 +1,8 @@
 import os
 import pandas as pd
 
-INPUT_FILE = "data/raw/CD01-RegisteredVoters-2026-03-05-83648.xlsx"
-OUTPUT_FILE = "data/processed/CD01-RegisteredVoters-2026-03-05-83648_validated.csv"
+INPUT_FILE = "data/raw/CD02-RegisteredVoters-2026-03-05-111836.xlsx"
+OUTPUT_FILE = "data/processed/CD02-RegisteredVoters-2026-03-05-111836_validated.csv"
 
 
 def main():
@@ -16,13 +16,15 @@ def main():
     # Standardize column names
     df.columns = df.columns.str.lower()
 
-    df = df.rename(columns={
-        "res_address_1": "street_address",
-        "city": "city",
-        "state": "state",
-        "zip_code": "zip",
-        "zip_plus_four": "zip_plus_four"
-    })
+    df = df.rename(
+        columns={
+            "res_address_1": "street_address",
+            "city": "city",
+            "state": "state",
+            "zip_code": "zip",
+            "zip_plus_four": "zip_plus_four",
+        }
+    )
 
     required = ["street_address", "city", "state", "zip"]
 
@@ -60,7 +62,7 @@ def main():
             lambda x: f"{x['zip']}-{x['zip_plus_four'].zfill(4)}"
             if pd.notna(x["zip_plus_four"]) and x["zip_plus_four"].strip() not in ["", "nan"]
             else x["zip"],
-            axis=1
+            axis=1,
         )
 
     # Ensure output directory exists

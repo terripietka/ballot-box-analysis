@@ -225,6 +225,8 @@ class Geocoder:
         r_json: dict = r.json()
         r_status = r_json.get("status")
 
+        print("GOOGLE CALLED")
+
         if r_status == "OK":
             with open(cache_file, "w") as f:
                 json.dump(r_json, f, indent=4)
@@ -245,10 +247,11 @@ class Geocoder:
         city_col: str,
         state_col: str,
         zip_col: str,
+        allow_google=True,
     ) -> dict | None:
         """
         Geocode a single address using Census Geocoder and fallback to Google Geocoder
-        if necessary.
+        if necessary. Adding flag to skip Google geocoding when working with large address lists to save time and API costs.
 
         Args:
             row (pd.Series): A pandas Series containing the address information.
@@ -281,9 +284,11 @@ class Geocoder:
                 return json.load(f)
 
         if fail_file.exists():
-            return Geocoder._geocode_single_google(
-                building_id=building_id, addr=addr, google_success=google_success, google_fail=google_fail
-            )
+            if allow_google:
+                return Geocoder._geocode_single_google(
+                    building_id=building_id, addr=addr, google_success=google_success, google_fail=google_fail
+                )
+            return None
 
         try:
             result = cg.onelineaddress(addr)
@@ -295,15 +300,21 @@ class Geocoder:
             else:
                 with open(fail_file, "w") as f:
                     json.dump(None, f)
-                return Geocoder._geocode_single_google(
-                    building_id=building_id, addr=addr, google_success=google_success, google_fail=google_fail
-                )
+                if allow_google:
+                    return Geocoder._geocode_single_google(
+                        building_id=building_id, addr=addr, google_success=google_success, google_fail=google_fail
+                    )
+                return None
 
         except Exception as e:
             logger.error(f"[{building_id}] {e}")
+            if allow_google:
+                return Geocoder._geocode_single_google(
+                    building_id=building_id, addr=addr, google_success=google_success, google_fail=google_fail
+                )
             return None
 
-    def geocode(self, batch_size: int = 500, processes: int = 50) -> gpd.GeoDataFrame:
+    def geocode(self, batch_size: int = 500, processes: int = 50, allow_google: bool = False) -> gpd.GeoDataFrame:
         """
         Geocode addresses in batches using multiple processes.
 
@@ -314,7 +325,7 @@ class Geocoder:
         Args:
             batch_size (int, optional): The number of addresses to process in each batch. Defaults to 500.
             processes (int, optional): The number of processes to use for parallel geocoding. Defaults to 50.
-
+            allow_google (bool, optional): Whether to allow fallback to Google geocoding when Census geocoding fails. Defaults to False.
         Returns:
             gpd.GeoDataFrame: A GeoDataFrame containing the geocoded addresses.
 
@@ -328,6 +339,9 @@ class Geocoder:
             - The geocoding results are appended to a DuckDB table specified by `self.duckdb_table`.
 
         """
+
+        self.allow_google = allow_google  # Update the instance variable based on the method argument
+
         # Add IDs if not already present
         self.addresses_df.loc[:, "address_id"] = self.addresses_df.apply(self._generate_id, include_unit=True, axis=1)
         self.addresses_df.loc[:, "building_id"] = self.addresses_df.apply(self._generate_id, axis=1)
@@ -369,6 +383,7 @@ class Geocoder:
                         [self.city_col] * _batch_size,
                         [self.state_col] * _batch_size,
                         [self.zip_col] * _batch_size,
+                        [self.allow_google] * _batch_size,
                     )
                 )
 
@@ -395,8 +410,10 @@ class Geocoder:
             self.conn.append(self.duckdb_table, geocoded_batch)
             self.conn.commit()
 
+            failed_count = _batch_size - len(geocoded_batch)
+
             logger.info(
-                f"[Batch {batch_idx}] Geocoding process completed. {len(geocoded_batch)} of {_batch_size} addresses successfully geocoded."
+                f"[Batch {batch_idx}] Geocoding process completed. {len(geocoded_batch)} of {_batch_size} addresses successfully geocoded. Census failures: {failed_count if not allow_google else 'N/A (Google fallback enabled)'}."
             )
 
         return self._join_existing()

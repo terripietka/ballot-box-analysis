@@ -20,7 +20,7 @@ import sys
 import pandas as pd
 from dotenv import load_dotenv
 
-from geocode import Geocoder
+from ballot_box_analysis.geocode import Geocoder
 
 
 # ---------------------------------------------------------------------------
@@ -28,8 +28,8 @@ from geocode import Geocoder
 # ---------------------------------------------------------------------------
 
 # Paths should be either edited here or provided via environment variables.
-INPUT_FILE = os.environ.get("GEOCODE_INPUT", "")
-OUTPUT_FILE = os.environ.get("GEOCODE_OUTPUT", "")
+INPUT_FILE = os.environ.get("GEOCODE_INPUT", "data/processed/CD02-RegisteredVoters-2026-03-05-111836_validated.csv")
+OUTPUT_FILE = os.environ.get("GEOCODE_OUTPUT", "data/geocoded/CD02-RegisteredVoters-2026-03-05-111836_geocoded.csv")
 
 # Load environment variables (.env file must exist in working directory)
 load_dotenv()
@@ -69,6 +69,7 @@ def main():
     # Load addresses
     try:
         df = pd.read_csv(INPUT_FILE)
+        # df = df.head(200)  # Limit to first 200 rows for testing
     except Exception as exc:
         raise RuntimeError(f"Failed to read input CSV: {exc}")
 
@@ -84,14 +85,18 @@ def main():
             city_col="city",
             state_col="state",
             zip_col="zip",
-            unit_col="unit",  # optional column
+            unit_col=None,  # optional column
         )
     except Exception as exc:
         raise RuntimeError(f"Failed to initialize Geocoder: {exc}")
 
     # Run geocoding
     try:
-        gdf = geocoder.geocode(batch_size=200, processes=100)
+        gdf = geocoder.geocode(
+            batch_size=5000,  # Keep batch size reasonable to avoid timeouts and API limits
+            processes=8,  # Adjust based on your CPU cores
+            allow_google=False,  # Disable Google fallback for testing to save time and API costs
+        )
     except Exception as exc:
         raise RuntimeError(f"Geocoding failed: {exc}")
 
