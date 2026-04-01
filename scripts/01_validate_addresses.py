@@ -1,8 +1,8 @@
 import os
 import pandas as pd
 
-INPUT_FILE = "data/raw/CD02-RegisteredVoters-2026-03-05-111836.xlsx"
-OUTPUT_FILE = "data/processed/CD02-RegisteredVoters-2026-03-05-111836_validated.csv"
+INPUT_FILE = "data/raw/CD06-RegisteredVoters-2026-03-05-16619.xlsx"
+OUTPUT_FILE = "data/processed/CD06-RegisteredVoters-2026-03-05-16619_validated.csv"
 
 
 def main():

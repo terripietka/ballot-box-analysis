@@ -28,8 +28,10 @@ from ballot_box_analysis.geocode import Geocoder
 # ---------------------------------------------------------------------------
 
 # Paths should be either edited here or provided via environment variables.
-INPUT_FILE = os.environ.get("GEOCODE_INPUT", "data/processed/CD02-RegisteredVoters-2026-03-05-111836_validated.csv")
-OUTPUT_FILE = os.environ.get("GEOCODE_OUTPUT", "data/geocoded/CD02-RegisteredVoters-2026-03-05-111836_geocoded.csv")
+INPUT_FILE = os.environ.get("GEOCODE_INPUT", "data/processed/CD02-RegisteredVoters-2026-03-05-111836_dropped.csv")
+OUTPUT_FILE = os.environ.get(
+    "GEOCODE_OUTPUT", "data/geocoded/CD02-RegisteredVoters-2026-03-05-111836_dropped_geocoded.csv"
+)
 
 # Load environment variables (.env file must exist in working directory)
 load_dotenv()
@@ -68,20 +70,35 @@ def main():
 
     # Load addresses
     try:
-        df = pd.read_csv(INPUT_FILE)
+        df = pd.read_csv(
+            INPUT_FILE, dtype={"street_address": str, "addr_non_std": str, "city": str, "state": str, "zip": str}
+        )
         # df = df.head(200)  # Limit to first 200 rows for testing
     except Exception as exc:
         raise RuntimeError(f"Failed to read input CSV: {exc}")
 
     # Verify required fields exist
-    required = ["street_address", "city", "state", "zip"]
+    required = ["street_address", "addr_non_std", "city", "state", "zip"]
     require_columns(df, required)
+
+    # -------------------------
+    # Clean input columns
+    # -------------------------
+    cols = ["street_address", "addr_non_std", "city", "state", "zip"]
+
+    for c in cols:
+        if c in df.columns:
+            df[c] = df[c].astype(str).str.replace(".0", "", regex=False).str.strip()
+
+    # Replace "nan" strings with actual empty strings
+    df = df.replace("nan", "")
 
     # Initialize geocoder
     try:
         geocoder = Geocoder(
             addresses_df=df,
-            address_col="street_address",
+            # address_col="street_address",
+            address_col="addr_non_std",  # Use non-standardized address column for testing to see how geocoder handles it
             city_col="city",
             state_col="state",
             zip_col="zip",
