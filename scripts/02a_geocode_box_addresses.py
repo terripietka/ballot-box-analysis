@@ -28,7 +28,7 @@ from ballot_box_analysis.geocode import Geocoder
 # ---------------------------------------------------------------------------
 
 # Paths should be either edited here or provided via environment variables.
-INPUT_FILE = os.environ.get("GEOCODE_INPUT", "data/processed/PE26_Oregon_Drop_Sites_20260324_processed.csv")
+INPUT_FILE = os.environ.get("GEOCODE_INPUT", "data/raw/PE26_Oregon_Drop_Sites_20260324.csv")
 OUTPUT_FILE = os.environ.get("GEOCODE_OUTPUT", "data/geocoded/PE26_Oregon_Drop_Sites_20260324_geocoded.csv")
 
 # Load environment variables (.env file must exist in working directory)
@@ -76,13 +76,13 @@ def main():
         raise RuntimeError(f"Failed to read input CSV: {exc}")
 
     # Verify required fields exist
-    required = ["street", "city", "state", "zip"]
+    required = ["Address"]
     require_columns(df, required)
 
     # -------------------------
     # Clean input columns
     # -------------------------
-    cols = ["County", "Drop Site Name", "Address", "Directions", "street", "city", "state", "zip"]
+    cols = ["County", "Drop Site Name", "Address", "Directions"]
 
     for c in cols:
         if c in df.columns:
@@ -96,11 +96,7 @@ def main():
         geocoder = Geocoder(
             addresses_df=df,
             # address_col="street_address",
-            address_col="street",  # Use non-standardized address column for testing to see how geocoder handles it
-            city_col="city",
-            state_col="state",
-            zip_col="zip",
-            unit_col=None,  # optional column
+            address_col="Address",  # Use non-standardized address column for testing to see how geocoder handles it
         )
     except Exception as exc:
         raise RuntimeError(f"Failed to initialize Geocoder: {exc}")
@@ -110,7 +106,7 @@ def main():
         gdf = geocoder.geocode(
             batch_size=5000,  # Keep batch size reasonable to avoid timeouts and API limits
             processes=8,  # Adjust based on your CPU cores
-            allow_google=True,  # Disable Google fallback for testing to save time and API costs
+            allow_google=False,  # Disable Google fallback for testing to save time and API costs
         )
     except Exception as exc:
         raise RuntimeError(f"Geocoding failed: {exc}")
