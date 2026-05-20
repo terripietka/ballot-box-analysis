@@ -14,11 +14,11 @@ OUTPUT_DIR = "isochrones"
 
 TRAVEL_TYPE = "public_transport"  # "driving" or "public_transport"
 
-ARRIVAL_WEEKDAY = "Monday"
+ARRIVAL_WEEKDAY = "Tuesday"
 ARRIVAL_TIME = "18:00"  # change per run (08:00, 13:00, 18:00, etc.)
 
 # MINUTES = [10, 15, 20]  # adjust per mode if needed
-MINUTES = [15, 30, 45]  # adjust per mode if needed
+MINUTES = [60, 120, 180, 240, 300, 360, 420, 480, 540, 600]  # adjust per mode if needed
 
 TIMEZONE = "America/Los_Angeles"
 

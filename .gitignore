@@ -262,3 +262,5 @@ $RECYCLE.BIN/
 *.csv
 *.wal
 *.db
+
+archive/
