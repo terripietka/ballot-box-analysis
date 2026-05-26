@@ -29,7 +29,7 @@ TARGET_WEEKDAY = "Tuesday"
 TARGET_TIME = "18:00"
 TARGET_MINUTES = [15, 30, 45, 60, 120, 180, 240]
 
-# Reduce if process is killed — 50k is safer on low-memory machines
+# Reduce if process is killed
 CHUNK_SIZE = 100_000
 
 # ---------------------------------------------------------------------------

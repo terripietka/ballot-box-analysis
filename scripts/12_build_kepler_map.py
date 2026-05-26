@@ -5,7 +5,7 @@ import geopandas as gpd
 import pandas as pd
 import pygris
 
-from src.ballot_box_analysis.map import (
+from ballot_box_analysis.map import (
     BallotBoxLayer,
     IsochroneMap,
     KeplerField,
@@ -19,6 +19,12 @@ from src.ballot_box_analysis.map import (
 )
 
 # ---------------------------------------------------------------------------
+# This script builds and saves two separate html maps for drive and transit access,
+# then exports the configs + data for loading on kepler.gl website.
+# ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
 # CONFIG
 # ---------------------------------------------------------------------------
 
@@ -29,12 +35,12 @@ VOTERS_CSV = "voters_kepler_ready.csv"
 OREGON_LAT = 44.0
 OREGON_LNG = -120.5
 
-# Per-zone sample fracs — weight 1 is largest so sample most aggressively
+# Building-level dedup means no further sampling needed
 SAMPLE_FRACS = {
-    1: 0.30,
-    2: 0.50,
-    3: 0.50,
-    4: 0.50,  # not covered — show all
+    1: 1.0,
+    2: 1.0,
+    3: 1.0,
+    4: 1.0,
 }
 
 # Drive zone config — 3-step green + red
@@ -67,7 +73,11 @@ transit_order = {"0-15min": 1, "15-30min": 2, "30-45min": 3, "Not covered": 4}
 voters_df["drive_zone_weight"] = voters_df["drive_zone"].map(drive_order)
 voters_df["transit_zone_weight"] = voters_df["transit_zone"].map(transit_order)
 
-print(f"  Total unique addresses: {len(voters_df):,}")
+# Deduplicate to building-level points (unique lat/lon)
+voters_df = voters_df.sort_values(["drive_zone_weight", "transit_zone_weight"], ascending=False)
+voters_df = voters_df.drop_duplicates(subset=["latitude", "longitude"], keep="last")
+
+print(f"  Building-level points: {len(voters_df):,}")
 
 # ---------------------------------------------------------------------------
 # LOAD STATIC LAYERS (shared between both maps)
@@ -262,6 +272,101 @@ def build_map(mode, zone_config, weight_col, output_html):
     print(f"Exporting to {output_html}...")
     kepler_map.export(output_html)
     print(f"Done! → {output_html}")
+
+    # Export config JSON
+    import json
+
+    config_path = output_html.replace(".html", "_config.json")
+    with open(config_path, "w") as f:
+        json.dump({"version": "v1", "config": kepler_map.config.model_dump()}, f)
+
+    # Export each zone as a CSV for loading on kepler.gl website
+    data_dir = output_html.replace(".html", "_data")
+    os.makedirs(data_dir, exist_ok=True)
+
+    EXPORT_COLS = [
+        "latitude",
+        "longitude",
+        "drive_zone",
+        "transit_zone",
+        "drive_zone_weight",
+        "transit_zone_weight",
+        "county",
+    ]
+
+    zone_dfs_list = []
+    for weight, cfg in zone_config.items():
+        safe_label = (
+            cfg["label"].replace(" ", "_").replace("(", "").replace(")", "").replace("/", "_").replace("≤", "lte")
+        )
+        out_path = os.path.join(data_dir, f"{safe_label}.csv")
+        zone_gdfs[weight][EXPORT_COLS].to_csv(out_path, index=False)
+        print(f"  Data saved → {out_path}")
+        zone_dfs_list.append(zone_gdfs[weight][EXPORT_COLS])
+
+    # Consolidated CSV for heatmap — all zones in one file with zone weight column
+    consolidated_path = os.path.join(data_dir, f"all_zones_heatmap_{mode}.csv")
+    pd.concat(zone_dfs_list, ignore_index=True).to_csv(consolidated_path, index=False)
+    print(f"  Heatmap CSV saved → {consolidated_path}")
+
+    # Export ballot boxes
+    boxes_df.to_csv(os.path.join(data_dir, "ballot_boxes.csv"), index=False)
+    print(f"  Data saved → {data_dir}/ballot_boxes.csv")
+
+    # Export county boundaries — Oregon only - bordering Washington counties kept appearing on the map.
+    oregon_counties = {
+        "BAKER",
+        "BENTON",
+        "CLACKAMAS",
+        "CLATSOP",
+        "COLUMBIA",
+        "COOS",
+        "CROOK",
+        "CURRY",
+        "DESCHUTES",
+        "DOUGLAS",
+        "GILLIAM",
+        "GRANT",
+        "HARNEY",
+        "HOOD RIVER",
+        "JACKSON",
+        "JEFFERSON",
+        "JOSEPHINE",
+        "KLAMATH",
+        "LAKE",
+        "LANE",
+        "LINCOLN",
+        "LINN",
+        "MALHEUR",
+        "MARION",
+        "MORROW",
+        "MULTNOMAH",
+        "POLK",
+        "SHERMAN",
+        "TILLAMOOK",
+        "UMATILLA",
+        "UNION",
+        "WALLOWA",
+        "WASCO",
+        "WASHINGTON",
+        "WHEELER",
+        "YAMHILL",
+    }
+    counties_export = counties_gdf[counties_gdf["county"].str.upper().isin(oregon_counties)].drop(
+        columns=["label_lng", "label_lat"], errors="ignore"
+    )
+    counties_export.to_file(os.path.join(data_dir, "county_boundaries.geojson"), driver="GeoJSON")
+    print(f"  Data saved → {data_dir}/county_boundaries.geojson")
+
+    # Export county label centroids as a CSV — load as Point layer in Kepler
+    # Set Label field to "county" to show county names on the map
+    county_labels_export = counties_gdf[counties_gdf["county"].str.upper().isin(oregon_counties)].copy()
+    county_labels_export["label_lng"] = county_labels_export.geometry.centroid.x
+    county_labels_export["label_lat"] = county_labels_export.geometry.centroid.y
+    county_labels_export[["county", "label_lat", "label_lng"]].to_csv(
+        os.path.join(data_dir, "county_labels.csv"), index=False
+    )
+    print(f"  Data saved → {data_dir}/county_labels.csv")
 
 
 # ---------------------------------------------------------------------------
