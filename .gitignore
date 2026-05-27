@@ -257,10 +257,16 @@ $RECYCLE.BIN/
 
 # End of https://www.toptal.com/developers/gitignore/api/python,visualstudiocode,macos,windows
 
-
+# data and image files
 *.xlsx
 *.csv
 *.wal
 *.db
+*.html
+*.png
+*.jpg
+*.geojson
+*.json
+
 
 archive/
