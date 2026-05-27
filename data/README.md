@@ -2,8 +2,6 @@
 
 This repository contains code only. Large data files are stored in Google Drive and must be downloaded separately before running any scripts.
 
-**Google Drive folder:** *(add link here)*
-
 ---
 
 ## Directory Structure
