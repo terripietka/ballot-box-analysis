@@ -8,71 +8,85 @@ This repository contains code only. Large data files are stored in Google Drive 
 
 ```
 data/
-├── final/                  # Raw voter files by congressional district (Google Drive)
+├── final/                  # final geocoded voter files by congressional district (Google Drive)
 │   ├── CD01-RegisteredVoters-2026-03-05-83648_final_geocoded.csv
 │   ├── CD02-RegisteredVoters-2026-03-05-111836_final_geocoded.csv
 │   ├── CD03-RegisteredVoters-2026-03-05-132915_final_geocoded.csv
 │   ├── CD04-RegisteredVoters-2026-03-05-151313_final_geocoded.csv
 │   ├── CD05-RegisteredVoters-2026-03-05-15366_final_geocoded.csv
 │   ├── CD06-RegisteredVoters-2026-03-05-16619_final_geocoded.csv
-|   └── geocoding_summary_20260401_200634.csv
+│   └── geocoding_summary_20260401_200634.csv
 │
 ├── geocoded/               # Geocoded ballot box locations (Google Drive)
 │   └── PE26_Oregon_Drop_Sites_20260324_geocoded.csv
 │
-├── kepler/                 # Pre-split voter files for Kepler.gl (Google Drive)
-│   ├── voters_drive_covered.csv
-│   ├── voters_drive_not_covered.csv
-│   ├── voters_transit_covered.csv
-│   ├── voters_transit_not_covered.csv
-│   ├── voters_neither_covered.csv
-│   ├── voters_both_covered.csv
-│   ├── voters_drive_no_transit_yes.csv
-│   └── voters_drive_yes_transit_no.csv
+├── kepler/
+|   └── oregon_drive_access_map_data/   # Kepler.gl layers for drive time map (Google Drive)
+│       ├── Drive_Zone_1_lte10_min.csv
+│       ├── Drive_Zone_2_10-15_min.csv
+│       ├── Drive_Zone_3_15-20_min.csv
+│       ├── Drive_Not_Covered.csv
+│       ├── all_zones_heatmap_drive.csv
+│       ├── ballot_boxes.csv
+│       ├── county_boundaries.geojson
+│       └── county_labels.csv
+|   └── oregon_transit_access_map_data/ # Kepler.gl layers for transit time map (Google Drive)
+│       ├── Transit_Zone_1_lte15_min.csv
+│       ├── Transit_Zone_2_15-30_min.csv
+│       ├── Transit_Zone_3_30-45_min.csv
+│       ├── Transit_Not_Covered.csv
+│       ├── all_zones_heatmap_transit.csv
+│       ├── ballot_boxes.csv
+│       ├── county_boundaries.geojson
+│       └── county_labels.csv
 │
 ├── charts/                 # Generated chart outputs — produced by 15_travel_time_analysis_w_charts.py
 │   └── *.png / *.csv
 │
-├── raw/                    # Original data files
-|
-├── BLM_OR_County_Boundaries_Polygon_Hub.geojson   # County boundaries (Google Drive)
-|
-├── isochrones/                 # Travel time isochrone GeoJSONs (Google Drive)
+├── raw/                    # Original files as received — do not modify (Google Drive)
 │
-│   Naming convention: {mode}_{weekday}_{HH-MM}_{X}min.geojson
-│   Example: driving_Tuesday_18-00_20min.geojson
-│            public_transport_Tuesday_18-00_45min.geojson
+├── isochrones/             # Travel time isochrone GeoJSONs (Google Drive)
+│   │
+│   │   Naming convention: {mode}_{weekday}_{HH-MM}_{X}min.geojson
+│   │   Example: driving_Tuesday_18-00_20min.geojson
+│   │            public_transport_Tuesday_18-00_45min.geojson
+│   │
+│   │   Modes:     driving, public_transport
+│   │   Weekdays:  Monday, Tuesday
+│   │   Times:     08-00, 13-00, 18-00
+│   │   Drive thresholds:   10, 15, 20 min
+│   │   Transit thresholds: 15, 30, 45, 60, 120, 180, 240 min
+│   │
+│   └──   Filenames must match this pattern exactly — the coverage
+│         analysis script parses metadata from filenames.
 │
-│   Modes:     driving, public_transport
-│   Weekdays:  Monday, Tuesday
-│   Times:     08-00, 13-00, 18-00
-│   Drive thresholds:   10, 15, 20 min
-│   Transit thresholds: 15, 30, 45, 60, 120, 180, 240 min
-│
-│   Filenames must match this pattern exactly — the coverage
-│   analysis script parses metadata from filenames.
+└── BLM_OR_County_Boundaries_Polygon_Hub.geojson   # County boundaries (Google Drive)
 ```
 
 ---
 
-## Cache Folders
+## Cache Folders & Database
 
-Two cache folders are used to avoid re-running expensive API calls. These are stored as hidden folders in the **project root** (note the leading `.`):
+Two cache folders and a DuckDB database are used to avoid re-running expensive API calls. These are stored in the **project root**:
 
 ```
-.traveltime_cache/      # Cached TravelTime API isochrone responses
-.geocoding_cache/       # Cached geocoding results
+ballot_box.db           # DuckDB database — geocoding results and intermediate data
+.traveltime_cache/      # Cached TravelTime API isochrone responses (hidden folder)
+.geocoding_cache/       # Cached geocoding results (hidden folder)
 ```
 
-These folders are available in Google Drive. To use them:
+All three are available in Google Drive. To use them:
 
 1. Download from Google Drive
-2. Place in the project root: `/workspaces/ballot-box-analysis/.traveltime_cache/`
-3. Confirm they are hidden — run `ls -la` in the project root and verify they appear with a `.` prefix
+2. Place `ballot_box.db` in the project root: `/workspaces/ballot-box-analysis/ballot_box.db`
+3. Place cache folders in the project root with the leading `.` prefix
+4. Confirm hidden folders exist by running `ls -la` in the project root
 
->If these folders are missing or empty, the geocoding and isochrone scripts will re-run all API calls from scratch, which is slow and will consume API quota.
+> If these files are missing, the geocoding and isochrone scripts will re-run all API calls from scratch, which is slow and will consume API quota.
+
 
 ---
+
 
 
 These files are produced by the analysis scripts. They are also available in Google Drive to skip rerunning expensive steps:
@@ -113,19 +127,18 @@ Analysis pipeline:
           ↓ produces voters_kepler_ready.csv
 
   13_process_voter_files.py
-          ↓ produces data/kepler/*.csv
+          ↓ produces summary statistics and coverage breakdowns
 
   15_travel_time_analysis_w_charts.py          ← requires outputs from 04a, 14, 11
           ↓ produces data/charts/*.png and *.csv
 
-  12_build_kepler_map.py                       ← requires outputs from 11, 13
-          ↓ produces kepler map data exports
+  12_build_kepler_map.py                       ← requires outputs from 11
+          ↓ produces oregon_drive_access_map_data/ and oregon_transit_access_map_data/
 ```
 
 ---
 
 ## Environment Setup
-
 
 API credentials required (set as environment variables):
 ```bash
@@ -139,3 +152,4 @@ export TRAVELTIME_API_KEY=your_api_key
 
 - Transit coverage percentages in charts are expressed as a share of **transit-accessible voters** (69.2% of total), not total registered voters — see methodology documentation for details
 - `04_ballot_box_coverage_analysis.py` includes isochrone generation; `04a` uses pre-generated isochrones and is faster for reanalysis
+- `16_patch_kepler_map_oregon.py` is an accessory script. When downloading HTML maps from Kepler.gl, map positioning is lost. Running this script will recenter the map on Oregon.
